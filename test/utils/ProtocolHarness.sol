@@ -53,6 +53,7 @@ contract ProtocolHarness is Protocol {
 
     function setLatestIndex(uint256 index_) external {
         _latestIndex = uint128(index_);
+        _latestUpdateTimestamp = uint40(block.timestamp);
     }
 
     function setLatestRate(uint256 rate_) external {

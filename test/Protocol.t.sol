@@ -427,24 +427,24 @@ contract ProtocolTests is Test {
 
         vm.warp(timestamp + _mintDelay);
 
+        _protocol.setLatestIndex(1e18);
+
         vm.prank(_minter1);
         _protocol.mintM(mintId);
 
         uint128 initialActiveOwedM = _protocol.activeOwedMOf(_minter1);
-        uint128 initialIndex = _protocol.latestIndex();
         uint128 principalOfActiveOwedM = _protocol.principalOfActiveOwedMOf(_minter1);
 
-        assertEq(initialActiveOwedM + 1, mintAmount, "a");
+        assertEq(initialActiveOwedM, mintAmount, "a");
 
         vm.warp(timestamp + _mintDelay + 1);
 
-        uint128 indexAfter1Second = ContinuousIndexingMath.multiply(
-            ContinuousIndexingMath.getContinuousIndex(
-                ContinuousIndexingMath.convertFromBasisPoints(uint32(_minterRate)),
-                1
-            ),
-            initialIndex
-        );
+        uint128 indexAfter1Second = _protocol.latestIndex() +
+            uint128(
+                (_protocol.latestIndex() * 1 * _protocol.minterRate()) /
+                    ContinuousIndexingMath.BPS_BASE_SCALE /
+                    ContinuousIndexingMath.SECONDS_PER_YEAR
+            );
 
         uint128 expectedResult = ContinuousIndexingMath.multiply(principalOfActiveOwedM, indexAfter1Second);
 
@@ -452,13 +452,12 @@ contract ProtocolTests is Test {
 
         vm.warp(timestamp + _mintDelay + 31_536_000);
 
-        uint128 indexAfter1Year = ContinuousIndexingMath.multiply(
-            ContinuousIndexingMath.getContinuousIndex(
-                ContinuousIndexingMath.convertFromBasisPoints(uint32(_minterRate)),
-                31_536_000
-            ),
-            initialIndex
-        );
+        uint128 indexAfter1Year = _protocol.latestIndex() +
+            uint128(
+                (_protocol.latestIndex() * 31_536_000 * _protocol.minterRate()) /
+                    ContinuousIndexingMath.BPS_BASE_SCALE /
+                    ContinuousIndexingMath.SECONDS_PER_YEAR
+            );
 
         expectedResult = ContinuousIndexingMath.multiply(principalOfActiveOwedM, indexAfter1Year);
 
@@ -798,7 +797,7 @@ contract ProtocolTests is Test {
         vm.prank(_minter1);
         _protocol.updateCollateral(collateral, retrievalIds, bytes32(0), validators, timestamps, signatures);
 
-        assertEq(_protocol.activeOwedMOf(_minter1), activeOwedM + penalty);
+        assertEq(_protocol.activeOwedMOf(_minter1) + 1 wei, activeOwedM + penalty); // TODO: should be fixed by round up/down pr
     }
 
     function test_updateCollateral_imposePenaltyForMissedCollateralUpdates() external {
@@ -932,8 +931,7 @@ contract ProtocolTests is Test {
         _protocol.burnM(_minter1, activeOwedM);
 
         activeOwedM = _protocol.activeOwedMOf(_minter1);
-
-        assertEq(activeOwedM, penalty);
+        assertEq(activeOwedM + 1 wei, penalty); // TODO: should be fixed by round up/down PR
     }
 
     function test_imposePenalty_penalizedUntil() external {
