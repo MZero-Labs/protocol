@@ -26,6 +26,11 @@ library ContinuousIndexingMath {
         return uint128((x * y) / EXP_BASE_SCALE);
     }
 
+    /// @notice Helper function to calculate numerical index delta (linear compounding formula).
+    function getNumericaIndexDelta(uint256 index, uint256 rate, uint256 time) internal pure returns (uint128 delta) {
+        return uint128((index * rate * time) / SECONDS_PER_YEAR / BPS_BASE_SCALE);
+    }
+
     /// @notice Helper function to calculate e^rt (continuous compounding formula).
     function getContinuousIndex(uint256 yearlyRate, uint256 time) internal pure returns (uint128 index) {
         return exponent((yearlyRate * time) / SECONDS_PER_YEAR);

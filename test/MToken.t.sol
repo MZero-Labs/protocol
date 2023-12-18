@@ -482,19 +482,19 @@ contract MTokenTests is Test {
         _mToken.setIsEarning(_alice, true);
         _mToken.setInternalBalanceOf(_alice, 909);
 
-        assertEq(_mToken.balanceOf(_alice), 999);
+        assertEq(_mToken.balanceOf(_alice), 995);
 
         vm.warp(block.timestamp + 365 days);
 
-        assertEq(_mToken.balanceOf(_alice), 1_105);
+        assertEq(_mToken.balanceOf(_alice), 1_086);
 
         _mToken.setLatestRate(_earnerRate / 2); // 5% APY
 
-        assertEq(_mToken.balanceOf(_alice), 1_002); // Is dependent on latestRate.
+        assertEq(_mToken.balanceOf(_alice), 997); // Is dependent on latestRate.
 
         _mToken.setLatestIndex(1_200_000_000_000_000_000);
 
-        assertEq(_mToken.balanceOf(_alice), 1_202); // Is dependent on latestIndex.
+        assertEq(_mToken.balanceOf(_alice), 1_197); // Is dependent on latestIndex.
     }
 
     function test_totalEarningSupply() external {

@@ -40,22 +40,14 @@ abstract contract ContinuousIndexing is IContinuousIndexing {
     |                                       External/Public View/Pure Functions                                        |
     \******************************************************************************************************************/
 
-    // function currentIndex() public view virtual returns (uint128 currentIndex_) {
-    //     return
-    //         ContinuousIndexingMath.multiply(
-    //             _latestIndex,
-    //             ContinuousIndexingMath.getContinuousIndex(
-    //                 ContinuousIndexingMath.convertFromBasisPoints(_latestRate),
-    //                 block.timestamp - _latestUpdateTimestamp
-    //             )
-    //         );
-    // }
-
     function currentIndex() public view virtual returns (uint128 currentIndex_) {
-        uint256 indexDelta_ = _latestIndex * _latestRate * (block.timestamp - _latestUpdateTimestamp);
         return
             _latestIndex +
-            uint128(indexDelta_ / ContinuousIndexingMath.SECONDS_PER_YEAR / ContinuousIndexingMath.BPS_BASE_SCALE);
+            ContinuousIndexingMath.getNumericaIndexDelta(
+                _latestIndex,
+                _latestRate,
+                block.timestamp - _latestUpdateTimestamp
+            );
     }
 
     function latestIndex() public view virtual returns (uint128 index_) {
