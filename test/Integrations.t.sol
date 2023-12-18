@@ -47,6 +47,8 @@ contract IntegrationTests is Test {
     uint256[] internal _validatorKeys = [_idaKey, _johnKey, _kenKey, _lisaKey];
     address[] internal _validators = [_ida, _john, _ken, _lisa];
 
+    // uint256 internal _baseEarnerRate = 1000e14; // 10% APY
+    // uint256 internal _baseMinterRate = 1000e14; // 10% APY
     uint256 internal _baseEarnerRate = ContinuousIndexingMath.BPS_BASE_SCALE / 10; // 10% APY
     uint256 internal _baseMinterRate = ContinuousIndexingMath.BPS_BASE_SCALE / 10; // 10% APY
     uint256 internal _updateInterval = 24 hours;
@@ -396,6 +398,76 @@ contract IntegrationTests is Test {
         assertEq(_protocol.inactiveOwedMOf(_minters[0]), 555_932_477399);
         assertEq(_mToken.balanceOf(_bob), 555_719_639374); // No change due to no earner rate in last 30 days.
         assertEq(_mToken.balanceOf(_vault), 60_052998); // No change since conditions did not change.
+    }
+
+    function test_story_compounding_break_minimum() external {
+        _registrar.updateConfig(SPOGRegistrarReader.BASE_EARNER_RATE, 40_000e14);
+        _registrar.updateConfig(SPOGRegistrarReader.BASE_MINTER_RATE, 40_000e14);
+
+        // console2.log("protocol index = ", _protocol.currentIndex());
+        // console2.log("mToken index = ", _mToken.currentIndex());
+        // console2.log("minter rate = ", _protocol.minterRate());
+        // console2.log("earner rate = ", _mToken.earnerRate());
+        // console2.log("earner rate base rate = ", _earnerRateModel.baseRate());
+
+        uint256 collateral = 1_000_000e6;
+        uint256 mintAmount = 500_000e6;
+        uint256[] memory retrievalIds = new uint256[](0);
+        uint256 signatureTimestamp = block.timestamp;
+
+        address[] memory validators = new address[](1);
+        validators[0] = _validators[0];
+
+        uint256[] memory timestamps = new uint256[](1);
+        timestamps[0] = signatureTimestamp;
+
+        bytes[] memory signatures = new bytes[](1);
+        signatures[0] = _getCollateralUpdateSignature(
+            _minters[0],
+            collateral,
+            retrievalIds,
+            bytes32(0),
+            signatureTimestamp,
+            _validatorKeys[0]
+        );
+
+        vm.warp(block.timestamp + 1 hours); // 1 hour after collecting signatures, minter updateCollateral is mined.
+
+        vm.prank(_minters[0]);
+        _protocol.activateMinter(_minters[0]);
+
+        assertEq(_protocol.isActiveMinter(_minters[0]), true);
+
+        vm.prank(_minters[0]);
+        _protocol.updateCollateral(collateral, retrievalIds, bytes32(0), validators, timestamps, signatures);
+
+        vm.warp(block.timestamp + 1 hours); // 1 hour later, minter proposes a mint.
+
+        vm.prank(_alice);
+        _mToken.startEarning();
+
+        vm.prank(_minters[0]);
+        uint256 mintId = _protocol.proposeMint(mintAmount, _alice);
+
+        vm.warp(block.timestamp + _mintDelay + 1 hours); // 1 hour after the mint delay, the minter mints M.
+
+        vm.prank(_minters[0]);
+        _protocol.mintM(mintId);
+
+        for (uint256 i; i < 100000; ++i) {
+            _mToken.updateIndex();
+            // _protocol.updateIndex();
+            vm.warp(block.timestamp + 1);
+        }
+
+        // console2.log("protocol index = ", _protocol.currentIndex());
+        // console2.log("mToken index   = ", _mToken.currentIndex());
+
+        // console2.log("minter owes    = ", _protocol.activeOwedMOf(_minters[0]));
+        // console2.log("alice balance  = ", _mToken.balanceOf(_alice));
+        // console2.log("minter > alice", _protocol.activeOwedMOf(_minters[0]) >= _mToken.balanceOf(_alice));
+
+        assertTrue(_protocol.activeOwedMOf(_minters[0]) >= _mToken.balanceOf(_alice));
     }
 
     function _makeKey(string memory name) internal returns (uint256 privateKey) {
