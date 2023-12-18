@@ -7,6 +7,7 @@ import { SPOGRegistrarReader } from "./libs/SPOGRegistrarReader.sol";
 import { IEarnerRateModel } from "./interfaces/IEarnerRateModel.sol";
 import { IMToken } from "./interfaces/IMToken.sol";
 import { IProtocol } from "./interfaces/IProtocol.sol";
+import "forge-std/console.sol";
 
 contract EarnerRateModel is IEarnerRateModel {
     uint256 internal constant _ONE = 10_000; // 100% in basis points.
@@ -23,16 +24,23 @@ contract EarnerRateModel is IEarnerRateModel {
 
     function rate() external view returns (uint256 rate_) {
         uint256 totalActiveOwedM_ = IProtocol(protocol).totalActiveOwedM();
+        uint256 totalEarningSupply_ = IMToken(mToken).totalEarningSupply();
+        console.log("totalActiveOwedM_   = ", totalActiveOwedM_);
+        console.log("totalEarningSupply_ = ", totalEarningSupply_);
 
         if (totalActiveOwedM_ == 0) return 0;
 
-        uint256 totalEarningSupply_ = IMToken(mToken).totalEarningSupply();
-
         if (totalEarningSupply_ == 0) return baseRate();
+
+        // if (totalEarningSupply_ > totalActiveOwedM_) return 0;
 
         // NOTE: Calculate safety guard rate that prevents overprinting of M.
         // TODO: Move this into M Token itself after all integration/invariants tests are done.
+
         uint256 safeRate_ = (IProtocol(protocol).minterRate() * totalActiveOwedM_) / totalEarningSupply_;
+        console.log("twice = ", safeRate_ * totalEarningSupply_);
+        console.log("once =  ", IProtocol(protocol).minterRate() * totalActiveOwedM_);
+        console.log("safeRate_ = ", safeRate_);
 
         return _min(baseRate(), safeRate_);
     }
