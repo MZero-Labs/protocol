@@ -200,6 +200,8 @@ contract MToken is IMToken, ContinuousIndexing, ERC20Extended {
      * @param amount_    The present amount to mint.
      */
     function _mint(address recipient_, uint256 amount_) internal {
+        _revertIfInvalidRecipient(recipient_);
+
         emit Transfer(address(0), recipient_, amount_);
 
         uint240 safeAmount_ = UIntMath.safe240(amount_);
@@ -329,6 +331,8 @@ contract MToken is IMToken, ContinuousIndexing, ERC20Extended {
      * @param amount_    The present amount to transfer.
      */
     function _transfer(address sender_, address recipient_, uint256 amount_) internal override {
+        _revertIfInvalidRecipient(recipient_);
+
         emit Transfer(sender_, recipient_, amount_);
 
         uint240 safeAmount_ = UIntMath.safe240(amount_);
@@ -422,6 +426,14 @@ contract MToken is IMToken, ContinuousIndexing, ERC20Extended {
         );
 
         rate_ = (success_ && returnData_.length >= 32) ? UIntMath.bound32(abi.decode(returnData_, (uint256))) : 0;
+    }
+
+    /**
+     * @dev   Reverts if the recipient of a `mint` or `transfer` is address(0) ot the token contract itself.
+     * @param recipient_ Address of the recipient.
+     */
+    function _revertIfInvalidRecipient(address recipient_) internal view {
+        if (recipient_ == address(0) || recipient_ == address(this)) revert InvalidRecipient(recipient_);
     }
 
     /**
