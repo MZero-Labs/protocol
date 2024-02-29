@@ -183,6 +183,8 @@ contract MToken is IMToken, ContinuousIndexing, ERC20Extended {
      * @param amount_  The present amount to burn.
      */
     function _burn(address account_, uint256 amount_) internal {
+        _revertIfInsufficienAmount(amount_);
+
         emit Transfer(account_, address(0), amount_);
 
         if (_balances[account_].isEarning) {
@@ -200,6 +202,7 @@ contract MToken is IMToken, ContinuousIndexing, ERC20Extended {
      * @param amount_    The present amount to mint.
      */
     function _mint(address recipient_, uint256 amount_) internal {
+        _revertIfInsufficienAmount(amount_);
         _revertIfInvalidRecipient(recipient_);
 
         emit Transfer(address(0), recipient_, amount_);
@@ -429,8 +432,16 @@ contract MToken is IMToken, ContinuousIndexing, ERC20Extended {
     }
 
     /**
-     * @dev   Reverts if the recipient of a `mint` or `transfer` is address(0) ot the token contract itself.
-     * @param recipient_ Address of the recipient.
+     * @dev   Reverts if the amount of a `mint` or `burn` is equal to 0.
+     * @param amount_ Amount to check.
+     */
+    function _revertIfInsufficienAmount(uint256 amount_) internal view {
+        if (amount_ == 0) revert InsufficientAmount(amount_);
+    }
+
+    /**
+     * @dev   Reverts if the recipient of a `mint` or `transfer` is address(0) or the token contract itself.
+     * @param recipient_ Address of the recipient to check.
      */
     function _revertIfInvalidRecipient(address recipient_) internal view {
         if (recipient_ == address(0) || recipient_ == address(this)) revert InvalidRecipient(recipient_);
