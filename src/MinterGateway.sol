@@ -156,6 +156,8 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
             signatures_
         );
 
+        _updateIndex();
+
         uint240 safeCollateral_ = UIntMath.safe240(collateral_);
         uint240 totalResolvedCollateralRetrieval_ = _resolvePendingRetrievals(msg.sender, retrievalIds_);
 
@@ -173,9 +175,7 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
 
         _imposePenaltyIfUndercollateralized(msg.sender);
 
-        // NOTE: Above functionality already has access to `currentIndex()`, and since the completion of the collateral
-        //       update can result in a new rate, we should update the index here to lock in that rate.
-        updateIndex();
+        _updateRate();
     }
 
     /// @inheritdoc IMinterGateway
@@ -252,13 +252,15 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
             if (block.timestamp > expiresAt_) revert ExpiredMintProposal(expiresAt_);
         }
 
+        uint128 currentIndex_ = _updateIndex();
+
         _revertIfUndercollateralized(msg.sender, amount_); // Ensure minter remains sufficiently collateralized.
 
         delete _mintProposals[msg.sender]; // Delete mint request.
 
         // Adjust principal of active owed M for minter.
         // NOTE: When minting a present amount, round the principal up in favor of the protocol.
-        principalAmount_ = _getPrincipalAmountRoundedUp(amount_);
+        principalAmount_ = _getPrincipalAmountRoundedUp(amount_, currentIndex_);
         uint112 principalOfTotalActiveOwedM_ = principalOfTotalActiveOwedM;
 
         emit MintExecuted(id_, principalAmount_, amount_);
@@ -270,7 +272,8 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
             // a principal active amount, would overflow the `uint112 principalOfTotalActiveOwedM`.
             if (
                 // NOTE: Round the principal up for worst case.
-                newPrincipalOfTotalActiveOwedM_ + _getPrincipalAmountRoundedUp(totalInactiveOwedM) >= type(uint112).max
+                newPrincipalOfTotalActiveOwedM_ + _getPrincipalAmountRoundedUp(totalInactiveOwedM, currentIndex_) >=
+                type(uint112).max
             ) {
                 revert OverflowsPrincipalOfTotalOwedM();
             }
@@ -281,9 +284,7 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
 
         IMToken(mToken).mint(destination_, amount_);
 
-        // NOTE: Above functionality already has access to `currentIndex()`, and since the completion of the mint
-        //       can result in a new rate, we should update the index here to lock in that rate.
-        updateIndex();
+        _updateRate();
     }
 
     /// @inheritdoc IMinterGateway
@@ -305,6 +306,8 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
 
         bool isActive_ = _minterStates[minter_].isActive;
 
+        _updateIndex();
+
         if (isActive_) {
             // NOTE: Penalize only for missed collateral updates, not for undercollateralization.
             // Undercollateralization within one update interval is forgiven.
@@ -325,9 +328,7 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
 
         IMToken(mToken).burn(msg.sender, amount_); // Burn actual M tokens
 
-        // NOTE: Above functionality already has access to `currentIndex()`, and since the completion of the burn
-        //       can result in a new rate, we should update the index here to lock in that rate.
-        updateIndex();
+        _updateRate();
     }
 
     /// @inheritdoc IMinterGateway
@@ -364,6 +365,7 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
     function deactivateMinter(address minter_) external onlyActiveMinter(minter_) returns (uint240 inactiveOwedM_) {
         if (isMinterApproved(minter_)) revert StillApprovedMinter();
 
+        uint128 currentIndex_ = _updateIndex();
         uint112 principalOfActiveOwedM_ = principalOfActiveOwedMOf(minter_);
 
         unchecked {
@@ -373,7 +375,7 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
                 uint256(principalOfActiveOwedM_) + _getPenaltyPrincipalForMissedCollateralUpdates(minter_)
             );
 
-            inactiveOwedM_ = _getPresentAmount(newPrincipalOfOwedM_);
+            inactiveOwedM_ = _getPresentAmount(newPrincipalOfOwedM_, currentIndex_);
 
             // Treat rawOwedM as principal since minter is active.
             principalOfTotalActiveOwedM -= principalOfActiveOwedM_;
@@ -391,29 +393,7 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
 
         _rawOwedM[minter_] = inactiveOwedM_; // Treat rawOwedM as inactive owed M since minter is now inactive.
 
-        // NOTE: Above functionality already has access to `currentIndex()`, and since the completion of the
-        //       deactivation can result in a new rate, we should update the index here to lock in that rate.
-        updateIndex();
-    }
-
-    /// @inheritdoc IContinuousIndexing
-    function updateIndex() public override(IContinuousIndexing, ContinuousIndexing) returns (uint128 index_) {
-        // NOTE: Since the currentIndex of the Minter Gateway and mToken are constant through this context's execution (since
-        //       the block.timestamp is not changing) we can compute excessOwedM without updating the mToken index.
-        uint240 excessOwedM_ = excessOwedM();
-
-        if (excessOwedM_ > 0) IMToken(mToken).mint(ttgVault, excessOwedM_); // Mint M to TTG Vault.
-
-        // NOTE: Above functionality already has access to `currentIndex()`, and since the completion of the collateral
-        //       update can result in a new rate, we should update the index here to lock in that rate.
-        // NOTE: With the current rate models, the minter rate does not depend on anything in the Minter Gateway or mToken, so
-        //       we can update the minter rate and index here.
-        index_ = super.updateIndex(); // Update minter index and rate.
-
-        // NOTE: Given the current implementation of the mToken transfers and its rate model, while it is possible for
-        //       the above mint to already have updated the mToken index if M was minted to an earning account, we want
-        //       to ensure the rate provided by the mToken's rate model is locked in.
-        IMToken(mToken).updateIndex(); // Update earning index and rate.
+        _updateRate();
     }
 
     /******************************************************************************************************************\
@@ -652,14 +632,18 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
     }
 
     /// @inheritdoc IContinuousIndexing
-    function currentIndex() public view override(ContinuousIndexing, IContinuousIndexing) returns (uint128) {
+    function currentIndex() public view override(ContinuousIndexing, IContinuousIndexing) returns (uint128 index_) {
+        index_ = latestIndex;
+
+        if (latestUpdateTimestamp == block.timestamp) return index_;
+
         // NOTE: Safe to use unchecked here, since `block.timestamp` is always greater than `latestUpdateTimestamp`.
         unchecked {
             return
                 // NOTE: Cap the index to `type(uint128).max` to prevent overflow in present value math.
                 UIntMath.bound128(
                     ContinuousIndexingMath.multiplyIndicesUp(
-                        latestIndex,
+                        index_,
                         ContinuousIndexingMath.getContinuousIndex(
                             ContinuousIndexingMath.convertFromBasisPoints(_latestRate),
                             uint32(block.timestamp - latestUpdateTimestamp)
@@ -847,6 +831,28 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
         _minterStates[minter_].updateTimestamp = newTimestamp_;
     }
 
+    /**
+     * @dev    Updates the rate to be used going forward. Should be called as late as possible given that rate models
+     *         can depend on the final state of the protocol.
+     * @return currentRate_ The current rate.
+     */
+    function _updateRate() internal override returns (uint32 currentRate_) {
+        // NOTE: Since the currentIndex of the Minter Gateway and mToken are constant throughout execution (since the
+        //       block.timestamp is not changing) we can compute excessOwedM without updating the indices.
+        uint240 excessOwedM_ = excessOwedM();
+
+        if (excessOwedM_ > 0) IMToken(mToken).mint(ttgVault, excessOwedM_); // Mint M to TTG Vault.
+
+        // NOTE: With the current rate models, the minter rate does not depend on anything in the Minter Gateway or mToken, so
+        //       we can update the minter rate and index here.
+        currentRate_ = super._updateRate(); // Update minter rate.
+
+        // NOTE: Given the current implementation of the mToken transfers and its rate model, while it is possible for
+        //       the above mint to already have updated the mToken index if M was minted to an earning account, we want
+        //       to ensure the rate provided by the mToken's rate model is locked in.
+        IMToken(mToken).poke(); // Update earning index and rate.
+    }
+
     /******************************************************************************************************************\
     |                                           Internal View/Pure Functions                                           |
     \******************************************************************************************************************/
@@ -916,6 +922,16 @@ contract MinterGateway is IMinterGateway, ContinuousIndexing, ERC712Extended {
      */
     function _getPresentAmount(uint112 principalAmount_) internal view returns (uint240) {
         return _getPresentAmountRoundedUp(principalAmount_, currentIndex());
+    }
+
+    /**
+     * @dev   Returns the present amount (rounded up) given the principal amount and an index.
+     *        All present amounts are rounded up in favor of the protocol, since they are owed.
+     * @param principalAmount_ The principal amount.
+     * @param index_           An index.
+     */
+    function _getPresentAmount(uint112 principalAmount_, uint128 index_) internal pure returns (uint240) {
+        return _getPresentAmountRoundedUp(principalAmount_, index_);
     }
 
     /**

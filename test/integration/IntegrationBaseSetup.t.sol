@@ -110,7 +110,7 @@ abstract contract IntegrationBaseSetup is TestUtils {
         _registrar.addToList(TTGRegistrarReader.MINTERS_LIST, _minters[2]);
         _registrar.addToList(TTGRegistrarReader.MINTERS_LIST, _minters[3]);
 
-        _minterGateway.updateIndex();
+        _minterGateway.poke();
     }
 
     /* ============ Helpers ============ */

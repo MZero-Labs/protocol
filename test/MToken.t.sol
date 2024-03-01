@@ -848,8 +848,8 @@ contract MTokenTests is TestUtils {
         assertEq(_mToken.latestUpdateTimestamp(), block.timestamp);
     }
 
-    /* ============ updateIndex ============ */
-    function test_updateIndex() external {
+    /* ============ poke ============ */
+    function test_poke() external {
         _mToken.setLatestRate(_earnerRate);
 
         uint256 expectedLatestIndex_ = ContinuousIndexingMath.EXP_SCALED_ONE;
@@ -878,7 +878,7 @@ contract MTokenTests is TestUtils {
         assertEq(_mToken.latestIndex(), expectedLatestIndex_);
         assertEq(_mToken.latestUpdateTimestamp(), expectedLatestUpdateTimestamp_);
 
-        _mToken.updateIndex();
+        _mToken.poke();
 
         expectedLatestIndex_ = _expectedCurrentIndex;
         expectedLatestUpdateTimestamp_ = block.timestamp;
@@ -895,7 +895,7 @@ contract MTokenTests is TestUtils {
         assertEq(_mToken.latestIndex(), expectedLatestIndex_);
         assertEq(_mToken.latestUpdateTimestamp(), expectedLatestUpdateTimestamp_);
 
-        _mToken.updateIndex();
+        _mToken.poke();
 
         assertEq(_mToken.currentIndex(), _expectedCurrentIndex);
         assertEq(_mToken.earnerRate(), _earnerRate / 2);
@@ -920,7 +920,7 @@ contract MTokenTests is TestUtils {
         assertEq(_mToken.latestIndex(), expectedLatestIndex_);
         assertEq(_mToken.latestUpdateTimestamp(), expectedLatestUpdateTimestamp_);
 
-        _mToken.updateIndex();
+        _mToken.poke();
 
         expectedLatestIndex_ = _expectedCurrentIndex;
         expectedLatestUpdateTimestamp_ = block.timestamp;
@@ -1075,7 +1075,7 @@ contract MTokenTests is TestUtils {
 
         assertEq(_mToken.earnerRate(), _earnerRate);
 
-        _mToken.updateIndex();
+        _mToken.poke();
 
         assertEq(_mToken.earnerRate(), _earnerRate / 2);
     }

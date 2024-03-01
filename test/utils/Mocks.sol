@@ -71,7 +71,7 @@ contract MockMToken {
         _totalSupply = totalSupply_;
     }
 
-    function updateIndex() public virtual returns (uint256 currentIndex_) {
+    function poke() public virtual returns (uint256 currentIndex_) {
         return _currentIndex;
     }
 

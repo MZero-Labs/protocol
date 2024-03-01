@@ -65,7 +65,7 @@ contract InvariantTests is TestUtils {
         _registrar.updateConfig(TTGRegistrarReader.MINT_RATIO, 9_000);
         _registrar.updateConfig(TTGRegistrarReader.PENALTY_RATE, uint256(0));
 
-        _minterGateway.updateIndex();
+        _minterGateway.poke();
 
         _handler = new ProtocolHandler(_minterGateway, _mToken, _registrar, _indexStore, _timestampStore);
 
@@ -107,11 +107,11 @@ contract InvariantTests is TestUtils {
 
         assertGe(_minterGateway.totalOwedM(), _mToken.totalSupply(), "total owed M >= total M supply");
 
-        _indexStore.setEarnerIndex(_mToken.updateIndex());
+        _indexStore.setEarnerIndex(_mToken.poke());
 
         if (_handler.checkPrincipalOfTotalSupplyOverflow(_indexStore.currentEarnerIndex()) == 0) return;
 
-        _indexStore.setMinterIndex(_minterGateway.updateIndex());
+        _indexStore.setMinterIndex(_minterGateway.poke());
 
         // Can be off by 1 wei because of rounding up and down
         assertApproxEqAbs(_minterGateway.totalOwedM(), _mToken.totalSupply(), 1, "total owed M => total M supply");

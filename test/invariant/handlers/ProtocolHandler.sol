@@ -119,12 +119,12 @@ contract ProtocolHandler is CommonBase, StdCheats, StdUtils, TestUtils {
 
         if (checkPrincipalOfTotalSupplyOverflow(_indexStore.currentEarnerIndex()) == 0) return;
 
-        _indexStore.setMinterIndex(_minterGateway.updateIndex());
+        _indexStore.setMinterIndex(_minterGateway.poke());
     }
 
     function updateMTokenIndex(uint256 timeJumpSeed_) external adjustTimestamp(timeJumpSeed_) {
         console2.log("Updating M Token index at %s", block.timestamp);
-        _indexStore.setEarnerIndex(_mToken.updateIndex());
+        _indexStore.setEarnerIndex(_mToken.poke());
     }
 
     function mintMToEarner(
@@ -323,8 +323,8 @@ contract ProtocolHandler is CommonBase, StdCheats, StdUtils, TestUtils {
         uint256[] memory timestamps = new uint256[](0);
         bytes[] memory signatures = new bytes[](0);
 
-        uint128 currentEarnerIndex_ = _indexStore.setEarnerIndex(_mToken.updateIndex());
-        _indexStore.setMinterIndex(_minterGateway.updateIndex());
+        uint128 currentEarnerIndex_ = _indexStore.setEarnerIndex(_mToken.poke());
+        _indexStore.setMinterIndex(_minterGateway.poke());
 
         // Get penalty if missed collateral updates and increase collateral to avoid undercollateralization
         amount_ += _minterGateway.getPenaltyForMissedCollateralUpdates(minter_);
@@ -368,7 +368,7 @@ contract ProtocolHandler is CommonBase, StdCheats, StdUtils, TestUtils {
 
         uint240 nextExcessOwedM_ = nextTotalOwedM_ > nextTotalMSupply_ ? nextTotalOwedM_ - nextTotalMSupply_ : 0;
 
-        // If PrincipalOfTotalSupply will overflow during updateIndex() when minting excess owed M to the vault, we return early.
+        // If principalOfTotalSupply will overflow during poke() when minting excess owed M to the vault, we return early.
         if (
             uint256(_mToken.principalOfTotalEarningSupply()) +
                 _getPrincipalAmountRoundedDown(_mToken.totalNonEarningSupply(), currentEarnerIndex_) +

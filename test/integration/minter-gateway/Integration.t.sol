@@ -352,7 +352,7 @@ contract IntegrationTests is IntegrationBaseSetup {
         vm.warp(timestamp_ + 300 days);
         assertLe(_minterGateway.totalOwedM(), _mToken.totalSupply(), "300 days");
 
-        _minterGateway.updateIndex();
+        _minterGateway.poke();
         assertLe(_minterGateway.totalOwedM(), _mToken.totalSupply());
     }
 
@@ -428,7 +428,7 @@ contract IntegrationTests is IntegrationBaseSetup {
         vm.warp(timestamp_ + 300 days);
         assertGe(_minterGateway.totalOwedM(), _mToken.totalSupply(), "300 days");
 
-        _minterGateway.updateIndex();
+        _minterGateway.poke();
         assertGe(_minterGateway.totalOwedM(), _mToken.totalSupply());
     }
 

@@ -53,7 +53,7 @@ describe("MToken", () => {
       await rateModel.getAddress(),
     );
     await rateModel.setRate(1_000);
-    await mToken.updateIndex();
+    await mToken.poke();
   });
 
   it("tests minting to non-earners", async () => {

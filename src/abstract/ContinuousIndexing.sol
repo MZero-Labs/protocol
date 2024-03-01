@@ -31,19 +31,10 @@ abstract contract ContinuousIndexing is IContinuousIndexing {
     \******************************************************************************************************************/
 
     /// @inheritdoc IContinuousIndexing
-    function updateIndex() public virtual returns (uint128 currentIndex_) {
-        // NOTE: `_rate()` can depend indirectly on `latestIndex` and `latestUpdateTimestamp`, if the RateModel
-        //       depends on earning balances/supply, which depends on `currentIndex()`, so only update them after this.
-        uint32 rate_ = _rate();
+    function poke() public returns (uint128 currentIndex_) {
+        currentIndex_ = _updateIndex();
 
-        if (latestUpdateTimestamp == block.timestamp && _latestRate == rate_) return latestIndex;
-
-        // NOTE: `currentIndex()` depends on `_latestRate`, so only update it after this.
-        latestIndex = currentIndex_ = currentIndex();
-        _latestRate = rate_;
-        latestUpdateTimestamp = uint40(block.timestamp);
-
-        emit IndexUpdated(currentIndex_, rate_);
+        _updateRate();
     }
 
     /******************************************************************************************************************\
@@ -52,6 +43,38 @@ abstract contract ContinuousIndexing is IContinuousIndexing {
 
     /// @inheritdoc IContinuousIndexing
     function currentIndex() public view virtual returns (uint128);
+
+    /******************************************************************************************************************\
+    |                                          Internal Interactive Functions                                          |
+    \******************************************************************************************************************/
+
+    /**
+     * @dev    Updates the latest index. This is purely time-dependent, so it will always have the same result regardless
+     *         when called.
+     * @return currentIndex_ The current index.
+     */
+    function _updateIndex() internal virtual returns (uint128 currentIndex_) {
+        if (latestUpdateTimestamp == block.timestamp) return latestIndex;
+
+        // NOTE: `currentIndex()` depends on the difference between `block.timestamp` and `latestUpdateTimestamp`.
+        latestIndex = currentIndex_ = currentIndex();
+        latestUpdateTimestamp = uint40(block.timestamp);
+
+        emit IndexUpdated(currentIndex_);
+    }
+
+    /**
+     * @dev    Updates the rate to be used going forward. Should be called as late as possible given that rate models
+     *         can depend on the final state of the protocol.
+     * @return currentRate_ The current rate.
+     */
+    function _updateRate() internal virtual returns (uint32 currentRate_) {
+        currentRate_ = _rate();
+
+        if (_latestRate == currentRate_) return currentRate_;
+
+        emit RateUpdated(_latestRate = currentRate_);
+    }
 
     /******************************************************************************************************************\
     |                                           Internal View/Pure Functions                                           |

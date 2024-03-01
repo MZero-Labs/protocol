@@ -88,7 +88,7 @@ contract MinterGatewayTests is TestUtils {
         _minterGateway = new MinterGatewayHarness(address(_ttgRegistrar), address(_mToken));
 
         _minterGateway.setIsActive(_minter1, true);
-        _minterGateway.setLatestRate(_minterRate); // This can be `minterGateway.updateIndex()`, but is not necessary.
+        _minterGateway.setLatestRate(_minterRate); // This can be `minterGateway.poke()`, but is not necessary.
     }
 
     /* ============ constructor ============ */
@@ -665,7 +665,7 @@ contract MinterGatewayTests is TestUtils {
     }
 
     /* ============ mintM ============ */
-    function test_mintM() external {
+    function test_mintM_xxx() external {
         uint256 amount = 80e18;
         uint48 mintId = 1;
 

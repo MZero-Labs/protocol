@@ -15,7 +15,7 @@ contract IntegrationTests is IntegrationBaseSetup {
         _registrar.updateConfig(TTGRegistrarReader.MINT_DELAY, _mintDelay);
         _registrar.updateConfig(TTGRegistrarReader.PENALTY_RATE, uint256(0));
 
-        _minterGateway.updateIndex();
+        _minterGateway.poke();
 
         // Since the contracts ae deployed at the same time, these values are the same..
         uint256 latestMinterGatewayUpdateTimestamp_ = block.timestamp;
@@ -169,7 +169,7 @@ contract IntegrationTests is IntegrationBaseSetup {
 
         assertEq(_minterGateway.activeOwedMOf(_minters[0]), 551_224_598014); // ~500k with 10% APY compounded continuously.
         assertEq(_mToken.balanceOf(_alice), 545_874_404196); // ~500k with 10% or less APY compounded continuously.
-        assertEq(_mToken.balanceOf(_vault), 1); // Still 0 since no call to `_minterGateway.updateIndex()`.
+        assertEq(_mToken.balanceOf(_vault), 1); // Still 0 since no call to `_minterGateway._updateIndex()`.
 
         uint256 transferAmount_ = _mToken.balanceOf(_alice);
 
@@ -192,14 +192,14 @@ contract IntegrationTests is IntegrationBaseSetup {
         assertEq(_minterGateway.activeOwedMOf(_minters[0]), 551_224_598014);
         assertEq(_mToken.balanceOf(_alice), 0);
         assertEq(_mToken.balanceOf(_bob), 545_874_404196);
-        assertEq(_mToken.balanceOf(_vault), 1); // No change since no call to `_minterGateway.updateIndex()`.
+        assertEq(_mToken.balanceOf(_vault), 1); // No change since no call to `_minterGateway._updateIndex()`.
 
         vm.warp(block.timestamp + 1 hours); // 1 hour later, someone updates the indices.
 
         uint256 excessOwedM = _minterGateway.excessOwedM();
         assertEq(excessOwedM, 535_648_6371);
 
-        _minterGateway.updateIndex();
+        _minterGateway.poke();
 
         // Both timestamps are updated since updateIndex gets called on the minterGateway, and thus on the mToken.
         latestMinterGatewayUpdateTimestamp_ = block.timestamp;
@@ -242,7 +242,7 @@ contract IntegrationTests is IntegrationBaseSetup {
 
         assertEq(_minterGateway.activeOwedMOf(_minters[0]), 551_381_933418);
         assertEq(_mToken.balanceOf(_bob), 545_874_404195);
-        assertEq(_mToken.balanceOf(_vault), 535_648_6372); // No change since no call to `_minterGateway.updateIndex()`.
+        assertEq(_mToken.balanceOf(_vault), 535_648_6372); // No change since no call to `_minterGateway._updateIndex()`.
 
         vm.warp(block.timestamp + 30 days); // 30 days later, the unresponsive minter is deactivated.
 
@@ -258,7 +258,7 @@ contract IntegrationTests is IntegrationBaseSetup {
 
         assertEq(_minterGateway.activeOwedMOf(_minters[0]), 555_932_515123);
         assertEq(_mToken.balanceOf(_bob), 549_968_032171);
-        assertEq(_mToken.balanceOf(_vault), 535_648_6372); // No change since no call to `_minterGateway.updateIndex()`.
+        assertEq(_mToken.balanceOf(_vault), 535_648_6372); // No change since no call to `_minterGateway._updateIndex()`.
 
         _registrar.removeFromList(TTGRegistrarReader.MINTERS_LIST, _minters[0]);
 

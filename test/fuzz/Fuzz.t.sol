@@ -258,7 +258,7 @@ contract FuzzTests is IntegrationBaseSetup {
             "total owed M >= total M supply"
         );
 
-        _minterGateway.updateIndex();
+        _minterGateway.poke();
 
         assertGe(
             IMinterGateway(_minterGateway).totalOwedM(),
