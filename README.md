@@ -1,8 +1,16 @@
 # M^0 Protocol
 
+<<<<<<< HEAD
 ## Overview
 
 M^0 is an EVM-compatible, immutable protocol that enables minting and burning of the ERC20 token $M. It also allows for $M distributions to yield earners and governance token ($ZERO) holders. There are three main types of actors in the protocol - Minters, Validators, and Yield Earners - all of which are permissioned via governance. Protocol variables are also managed by governance and are stored in a Registrar configuration contract.
+=======
+M^0 is an EVM-compatible, immutable protocol that enables minting and burning of the ERC20 token $M.
+
+It also allows for $M distributions to yield earners and governance token ($ZERO) holders.
+
+There are three main types of actors in the protocol - Minters, Validators, and Yield Earners - all of which are permissioned via governance. Protocol variables are also managed by governance and are stored in a Registrar configuration contract.
+>>>>>>> 4060d4f (Deployment)
 
 ## Development
 
@@ -10,7 +18,11 @@ M^0 is an EVM-compatible, immutable protocol that enables minting and burning of
 
 You may have to install the following tools to use this repository:
 
+<<<<<<< HEAD
 - [foundry](https://github.com/foundry-rs/foundry) to compile and test contracts
+=======
+- [Foundry](https://github.com/foundry-rs/foundry) to compile and test contracts
+>>>>>>> 4060d4f (Deployment)
 - [lcov](https://github.com/linux-test-project/lcov) to generate the code coverage report
 - [yarn](https://classic.yarnpkg.com/lang/en/docs/install/) to manage npm dependencies
 - [slither](https://github.com/crytic/slither) to static analyze contracts
@@ -18,7 +30,11 @@ You may have to install the following tools to use this repository:
 Install dependencies:
 
 ```bash
+<<<<<<< HEAD
 yarn
+=======
+npm i
+>>>>>>> 4060d4f (Deployment)
 forge install
 ```
 
@@ -27,7 +43,11 @@ forge install
 Run the following command to compile the contracts:
 
 ```bash
+<<<<<<< HEAD
 forge compile
+=======
+forge build
+>>>>>>> 4060d4f (Deployment)
 ```
 
 ### Coverage
@@ -50,6 +70,83 @@ To run all tests:
 
 ```bash
 forge test
+<<<<<<< HEAD
+=======
+```
+
+Run test that matches a test contract:
+
+```bash
+forge test --mc <test-contract-name>
+```
+
+Test a specific test case:
+
+```bash
+forge test --mt <test-case-name>
+```
+
+To run slither:
+
+```bash
+yarn slither
+```
+
+### Code quality
+
+[Prettier](https://prettier.io) is used to format Solidity code. Use it by running:
+
+```bash
+yarn prettier
+```
+
+[Solhint](https://protofire.github.io/solhint/) is used to lint Solidity files. Run it with:
+
+```bash
+yarn solhint
+```
+
+Or to autofix some issues:
+
+```bash
+yarn solhint-fix
+```
+
+## Deployment
+
+TTG needs to be deployed before deploying the M0 protocol contracts.
+
+Contracts are deployed via the use of pre-deterministic addresses. See [ContractHelper](https://github.com/MZero-Labs/common/blob/main/src/ContractHelper.sol#L6) in `common` repository.
+
+It is important to properly set [`_DEPLOYER_NONCE`](https://github.com/MZero-Labs/protocol/blob/main/.env.example?plain=1#L5) in your `.env` config.
+
+### Local
+
+A local Anvil node should already be running and the TTG contracts deployed on it.
+
+Then run:
+
+```bash
+make deploy-local
+```
+
+To generate the contracts list, run:
+
+```bash
+yarn gen:local
+```
+
+### Sepolia
+
+```bash
+make deploy-sepolia
+```
+
+To generate the contracts list, run:
+
+```bash
+yarn gen:testnet
+>>>>>>> 4060d4f (Deployment)
 ```
 
 Run test that matches a test contract:
